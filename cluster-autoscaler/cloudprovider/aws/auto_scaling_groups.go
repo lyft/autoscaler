@@ -35,12 +35,13 @@ const (
 )
 
 type asgCache struct {
-	registeredAsgs []*asg
-	asgToInstances map[AwsRef][]AwsInstanceRef
-	instanceToAsg  map[AwsInstanceRef]*asg
-	mutex          sync.Mutex
-	service        autoScalingWrapper
-	interrupt      chan struct{}
+	registeredAsgs    []*asg
+	asgToInstances    map[AwsRef][]AwsInstanceRef
+	instanceToAsg     map[AwsInstanceRef]*asg
+	instanceLifecycle map[AwsInstanceRef]*string
+	mutex             sync.Mutex
+	service           autoScalingWrapper
+	interrupt         chan struct{}
 
 	asgAutoDiscoverySpecs []asgAutoDiscoveryConfig
 	explicitlyConfigured  map[AwsRef]bool
@@ -76,6 +77,7 @@ func newASGCache(service autoScalingWrapper, explicitSpecs []string, autoDiscove
 		service:               service,
 		asgToInstances:        make(map[AwsRef][]AwsInstanceRef),
 		instanceToAsg:         make(map[AwsInstanceRef]*asg),
+		instanceLifecycle:     make(map[AwsInstanceRef]*string),
 		interrupt:             make(chan struct{}),
 		asgAutoDiscoverySpecs: autoDiscoverySpecs,
 		explicitlyConfigured:  make(map[AwsRef]bool),
@@ -203,6 +205,14 @@ func (m *asgCache) InstancesByAsg(ref AwsRef) ([]AwsInstanceRef, error) {
 	return nil, fmt.Errorf("error while looking for instances of ASG: %s", ref)
 }
 
+func (m *asgCache) findInstanceLifecycle(ref AwsInstanceRef) (*string, error) {
+	if lifecycle, found := m.instanceLifecycle[ref]; found {
+		return lifecycle, nil
+	}
+
+	return nil, fmt.Errorf("could not find instance %v", ref)
+}
+
 func (m *asgCache) SetAsgSize(asg *asg, size int) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -253,7 +263,6 @@ func (m *asgCache) DeleteInstances(instances []*AwsInstanceRef) error {
 			for i, instance := range instances {
 				instanceIds[i] = instance.Name
 			}
-
 			return fmt.Errorf("can't delete instances %s as they belong to at least two different ASGs (%s and %s)", strings.Join(instanceIds, ","), commonAsg.Name, asg.Name)
 		}
 	}
@@ -266,6 +275,22 @@ func (m *asgCache) DeleteInstances(instances []*AwsInstanceRef) error {
 				"of deleting instance", instance.Name)
 			m.decreaseAsgSizeByOneNoLock(commonAsg)
 		} else {
+			// check if the instance is already terminating - if it is, don't bother terminating again
+			// as doing so causes unnecessary API calls and can cause the curSize cached value to decrement
+			// unnecessarily.
+			lifecycle, err := m.findInstanceLifecycle(*instance)
+			if err != nil {
+				return err
+			}
+
+			if lifecycle != nil &&
+				*lifecycle == autoscaling.LifecycleStateTerminating ||
+				*lifecycle == autoscaling.LifecycleStateTerminatingWait ||
+				*lifecycle == autoscaling.LifecycleStateTerminatingProceed {
+				klog.V(2).Infof("instance %s is already terminating, will skip instead", instance.Name)
+				continue
+			}
+
 			params := &autoscaling.TerminateInstanceInAutoScalingGroupInput{
 				InstanceId:                     aws.String(instance.Name),
 				ShouldDecrementDesiredCapacity: aws.Bool(true),
@@ -340,6 +365,7 @@ func (m *asgCache) regenerate() error {
 
 	newInstanceToAsgCache := make(map[AwsInstanceRef]*asg)
 	newAsgToInstancesCache := make(map[AwsRef][]AwsInstanceRef)
+	newInstanceLifecycleMap := make(map[AwsInstanceRef]*string)
 
 	// Build list of knowns ASG names
 	refreshNames, err := m.buildAsgNames()
@@ -381,6 +407,7 @@ func (m *asgCache) regenerate() error {
 			ref := m.buildInstanceRefFromAWS(instance)
 			newInstanceToAsgCache[ref] = asg
 			newAsgToInstancesCache[asg.AwsRef][i] = ref
+			newInstanceLifecycleMap[ref] = instance.LifecycleState
 		}
 	}
 
@@ -393,6 +420,7 @@ func (m *asgCache) regenerate() error {
 
 	m.asgToInstances = newAsgToInstancesCache
 	m.instanceToAsg = newInstanceToAsgCache
+	m.instanceLifecycle = newInstanceLifecycleMap
 	return nil
 }
 

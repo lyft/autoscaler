@@ -57,6 +57,7 @@ import (
 	kube_flag "k8s.io/component-base/cli/flag"
 	componentbaseconfig "k8s.io/component-base/config"
 	"k8s.io/component-base/config/options"
+	"k8s.io/component-base/logs"
 	"k8s.io/component-base/metrics/legacyregistry"
 	klog "k8s.io/klog/v2"
 )
@@ -388,12 +389,14 @@ func run(healthCheck *metrics.HealthCheck) {
 func main() {
 	klog.InitFlags(nil)
 
+	utilfeature.DefaultMutableFeatureGate.AddFlag(pflag.CommandLine)
+	kube_flag.InitFlags()
+	logs.InitLogs()
+
 	leaderElection := defaultLeaderElectionConfiguration()
 	leaderElection.LeaderElect = true
 
 	options.BindLeaderElectionFlags(&leaderElection, pflag.CommandLine)
-	utilfeature.DefaultMutableFeatureGate.AddFlag(pflag.CommandLine)
-	kube_flag.InitFlags()
 
 	healthCheck := metrics.NewHealthCheck(*maxInactivityTimeFlag, *maxFailingTimeFlag)
 

@@ -501,7 +501,7 @@ func TestCleanup(t *testing.T) {
 }
 
 func TestDeleteNodesTerminatedInstances(t *testing.T) {
-	a := &autoScalingMock{}
+	a := &AutoScalingMock{}
 	provider := testProvider(t, newTestAwsManagerWithAsgs(t, a, []string{"1:5:test-asg"}))
 	asgs := provider.NodeGroups()
 
@@ -553,7 +553,7 @@ func TestDeleteNodesTerminatedInstances(t *testing.T) {
 	assert.Equal(t, initialSize, newSize)
 }
 
-func TestDeleteNodesTerminatedInstances(t *testing.T) {
+func TestDeleteNodesTerminatingInstances(t *testing.T) {
 	a := &AutoScalingMock{}
 	provider := testProvider(t, newTestAwsManagerWithAsgs(t, a, []string{"1:5:test-asg"}))
 	asgs := provider.NodeGroups()
@@ -575,7 +575,7 @@ func TestDeleteNodesTerminatedInstances(t *testing.T) {
 		mock.AnythingOfType("func(*autoscaling.DescribeAutoScalingGroupsOutput, bool) bool"),
 	).Run(func(args mock.Arguments) {
 		fn := args.Get(1).(func(*autoscaling.DescribeAutoScalingGroupsOutput, bool) bool)
-		fn(testSetASGInstanceLifecycle(testNamedDescribeAutoScalingGroupsOutput("test-asg", expectedInstancesCount, "test-instance-id", "second-test-instance-id"), autoscaling.LifecycleStateTerminated), false)
+		fn(testSetASGInstanceLifecycle(testNamedDescribeAutoScalingGroupsOutput("test-asg", expectedInstancesCount, "test-instance-id", "second-test-instance-id"), autoscaling.LifecycleStateTerminatingWait), false)
 		// we expect the instance count to be 1 after the call to DeleteNodes
 		expectedInstancesCount = 1
 	}).Return(nil)

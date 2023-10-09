@@ -529,7 +529,7 @@ func TestDeleteNodesTerminatedInstances(t *testing.T) {
 
 	initialSize, err := asgs[0].TargetSize()
 	assert.NoError(t, err)
-	assert.Equal(t, expectedInstancesCount, initialSize)
+	assert.Equal(t, 2, initialSize)
 
 	// try deleting a node, but all of them are already in a
 	// Terminated state, so we should see no calls to Terminate.
@@ -576,8 +576,6 @@ func TestDeleteNodesTerminatingInstances(t *testing.T) {
 	).Run(func(args mock.Arguments) {
 		fn := args.Get(1).(func(*autoscaling.DescribeAutoScalingGroupsOutput, bool) bool)
 		fn(testSetASGInstanceLifecycle(testNamedDescribeAutoScalingGroupsOutput("test-asg", expectedInstancesCount, "test-instance-id", "second-test-instance-id"), autoscaling.LifecycleStateTerminatingWait), false)
-		// we expect the instance count to be 1 after the call to DeleteNodes
-		expectedInstancesCount = 1
 	}).Return(nil)
 
 	provider.Refresh()

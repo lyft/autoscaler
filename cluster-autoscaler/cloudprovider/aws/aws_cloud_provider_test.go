@@ -501,7 +501,7 @@ func TestCleanup(t *testing.T) {
 }
 
 func TestDeleteNodesTerminatingInstances(t *testing.T) {
-	a := &autoScalingMock{}
+	a := &AutoScalingMock{}
 	provider := testProvider(t, newTestAwsManagerWithAsgs(t, a, nil, []string{"1:5:test-asg"}))
 	asgs := provider.NodeGroups()
 
@@ -549,7 +549,7 @@ func TestDeleteNodesTerminatingInstances(t *testing.T) {
 }
 
 func TestDeleteNodesTerminatedInstances(t *testing.T) {
-	a := &autoScalingMock{}
+	a := &AutoScalingMock{}
 	provider := testProvider(t, newTestAwsManagerWithAsgs(t, a, nil, []string{"1:5:test-asg"}))
 	asgs := provider.NodeGroups()
 

@@ -123,7 +123,7 @@ func (signer *EcsRamRoleSigner) refreshApi(request *requests.CommonRequest) (res
 
 func (signer *EcsRamRoleSigner) refreshCredential(response *responses.CommonResponse) (err error) {
 	if response.GetHttpStatus() != http.StatusOK {
-		fmt.Println("refresh Ecs sts token err, httpStatus: " + string(response.GetHttpStatus()) + ", message = " + response.GetHttpContentString())
+		fmt.Println("refresh Ecs sts token err, httpStatus: " + fmt.Sprintf("%d", response.GetHttpStatus()) + ", message = " + response.GetHttpContentString())
 		return
 	}
 	var data interface{}

@@ -579,10 +579,12 @@ func TestDeleteNodesTerminatingInstances(t *testing.T) {
 	}).Return(nil)
 
 	provider.Refresh()
+	a.AssertNumberOfCalls(t, "DescribeAutoScalingGroupsPages", 1)
 
 	initialSize, err := asgs[0].TargetSize()
 	assert.NoError(t, err)
 	assert.Equal(t, 2, initialSize)
+	a.AssertNumberOfCalls(t, "DescribeAutoScalingGroupsPages", 1)
 
 	node := &apiv1.Node{
 		Spec: apiv1.NodeSpec{

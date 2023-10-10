@@ -37,14 +37,14 @@ const (
 )
 
 type asgCache struct {
-	registeredAsgs    []*asg
-	asgToInstances    map[AwsRef][]AwsInstanceRef
-	instanceToAsg     map[AwsInstanceRef]*asg
-	instanceLifecycle map[AwsInstanceRef]*string
+	registeredAsgs []*asg
+	asgToInstances map[AwsRef][]AwsInstanceRef
+	instanceToAsg  map[AwsInstanceRef]*asg
+	mutex          sync.Mutex
+	service        autoScalingWrapper
+	interrupt      chan struct{}
 
-	mutex     sync.Mutex
-	service   autoScalingWrapper
-	interrupt chan struct{}
+	instanceLifecycle map[AwsInstanceRef]*string
 
 	asgAutoDiscoverySpecs []cloudprovider.ASGAutoDiscoveryConfig
 	explicitlyConfigured  map[AwsRef]bool

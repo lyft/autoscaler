@@ -81,7 +81,6 @@ func (m *autoScalingWrapper) getAutoscalingGroupsByNames(names []string) ([]*aut
 			AutoScalingGroupNames: aws.StringSlice(names[i:end]),
 			MaxRecords:            aws.Int64(maxRecordsReturnedByAPI),
 		}
-		fmt.Println("CALLING DESCRIBE AUTOSCALING GROUPS", aws.StringSlice(names[i:end]))
 		if err := m.DescribeAutoScalingGroupsPages(input, func(output *autoscaling.DescribeAutoScalingGroupsOutput, _ bool) bool {
 			asgs = append(asgs, output.AutoScalingGroups...)
 			// We return true while we want to be called with the next page of

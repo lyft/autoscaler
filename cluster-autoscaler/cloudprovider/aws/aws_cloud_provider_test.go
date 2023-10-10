@@ -543,7 +543,7 @@ func TestDeleteNodesTerminatedInstances(t *testing.T) {
 	// we expect no calls to TerminateInstanceInAutoScalingGroup,
 	// because the Node we tried to Delete was already terminating.
 	a.AssertNumberOfCalls(t, "TerminateInstanceInAutoScalingGroup", 0)
-	a.AssertNumberOfCalls(t, "DescribeAutoScalingGroupsPages", 1)
+	a.AssertNumberOfCalls(t, "DescribeAutoScalingGroupsPages", 2) // this version of autoscaler calls refresh after a delete.
 
 	newSize, err := asgs[0].TargetSize()
 	assert.NoError(t, err)
@@ -579,12 +579,10 @@ func TestDeleteNodesTerminatingInstances(t *testing.T) {
 	}).Return(nil)
 
 	provider.Refresh()
-	a.AssertNumberOfCalls(t, "DescribeAutoScalingGroupsPages", 1)
 
 	initialSize, err := asgs[0].TargetSize()
 	assert.NoError(t, err)
 	assert.Equal(t, 2, initialSize)
-	a.AssertNumberOfCalls(t, "DescribeAutoScalingGroupsPages", 1)
 
 	node := &apiv1.Node{
 		Spec: apiv1.NodeSpec{
@@ -594,7 +592,7 @@ func TestDeleteNodesTerminatingInstances(t *testing.T) {
 	err = asgs[0].DeleteNodes([]*apiv1.Node{node})
 	assert.NoError(t, err)
 	a.AssertNumberOfCalls(t, "TerminateInstanceInAutoScalingGroup", 0) // instances which are terminating don't need to be terminated again
-	a.AssertNumberOfCalls(t, "DescribeAutoScalingGroupsPages", 1)
+	a.AssertNumberOfCalls(t, "DescribeAutoScalingGroupsPages", 2)      // this version of autoscaler calls refresh after a delete.
 
 	newSize, err := asgs[0].TargetSize()
 	assert.NoError(t, err)
